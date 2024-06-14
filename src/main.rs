@@ -156,15 +156,15 @@ fn app_logic(game: &mut Game) -> impl xilem::WidgetView<Game> {
 		for x in 0..CELL_COLUMNS {
 			let cell: Box<xilem::AnyWidgetView<_>> = match game.board[x][y] {
 				Cell {status: CellStatus::Covered, .. } => if game.playing {
-					Box::new(view::button("	", move |game: &mut Game| game.reveal_multiple(x, y)))
+					Box::new(view::button("  ", move |game: &mut Game| game.reveal_multiple(x, y)))
 				} else {
 					Box::new(view::label(
-						if game.board[x][y].value == CellValue::Mined { "	B	" } else { "			" }
+						if game.board[x][y].value == CellValue::Mined { "  B  " } else { "      " }
 					))
 				}
-				Cell {status: CellStatus::Revealed, value: CellValue::Mined} => Box::new(view::label("	B	")),
-				Cell {status: CellStatus::Revealed, value: CellValue::Number(0)} => Box::new(view::label("			")),
-				Cell {status: CellStatus::Revealed, value: CellValue::Number(number)} => Box::new(view::label(format!("	{}	", number))),
+				Cell {status: CellStatus::Revealed, value: CellValue::Mined} => Box::new(view::label("  B  ")),
+				Cell {status: CellStatus::Revealed, value: CellValue::Number(0)} => Box::new(view::label("      ")),
+				Cell {status: CellStatus::Revealed, value: CellValue::Number(number)} => Box::new(view::label(format!("  {}  ", number))),
 			};
 			columns.push(cell);
 		}
