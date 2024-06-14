@@ -17,6 +17,6 @@ Features:
 
 Missing Features:
 
-* No special click detection
+* Double clicking on numbers doesn't reveal surrounding cells.
 * No color or images/emojis
 * No clock
