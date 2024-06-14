@@ -27,9 +27,16 @@ struct Cell {
     value: CellValue,
 }
 
+#[derive(PartialEq)]
+enum GameStatus {
+    Playing,
+    Lost,
+    Won,
+}
+
 struct Game {
     board: [[Cell; CELL_ROWS]; CELL_COLUMNS],
-    playing: bool,
+    status: GameStatus,
     revealed_count: usize,
     flag_count: usize,
 }
@@ -76,7 +83,7 @@ impl Game {
                 status: CellStatus::Covered,
                 value: CellValue::Number(0),
             }; CELL_ROWS]; CELL_COLUMNS],
-            playing: true,
+            status: GameStatus::Playing,
             revealed_count: 0,
             flag_count: 0,
         };
@@ -140,14 +147,14 @@ impl Game {
 
             if self.board[x][y].value == CellValue::Mined {
                 self.board[x][y].status = CellStatus::Revealed;
-                self.playing = false;
+                self.status = GameStatus::Lost;
                 return;
             }
 
             self.revealed_count += 1;
             if self.revealed_count >= CELL_ROWS * CELL_COLUMNS - MINE_COUNT {
                 //All numbers were revealed
-                self.playing = false;
+                self.status = GameStatus::Won;
                 return;
             }
 
@@ -163,7 +170,7 @@ impl Game {
     }
 
     fn flag(&mut self, x: usize, y: usize) {
-        if !self.playing {
+        if self.status != GameStatus::Playing {
             return;
         }
 
@@ -190,14 +197,19 @@ fn main() {
     let window_attributes = window::Window::default_attributes()
         .with_title("Minesweeper")
         .with_inner_size(dpi::LogicalSize::new(
-            30 * CELL_COLUMNS as u32,
-            45 + 30 * CELL_ROWS as u32,
+            32 * CELL_COLUMNS as u32,
+            45 + 32 * CELL_ROWS as u32,
         ));
     app.run_windowed_in(xilem::EventLoop::with_user_event(), window_attributes)
         .unwrap();
 }
 
 fn app_logic(game: &mut Game) -> impl xilem::WidgetView<Game> {
+    let face = match game.status {
+        GameStatus::Playing => "^_^",
+        GameStatus::Lost => "T_T",
+        GameStatus::Won => "^o^",
+    };
     //HACK: Adding sized boxes to make the Mines count appear left aligned and the button appear center aligned.
     let top_row = view::flex((
         view::sized_box::<Game, (), _>(view::label(format!(
@@ -205,7 +217,7 @@ fn app_logic(game: &mut Game) -> impl xilem::WidgetView<Game> {
             MINE_COUNT - game.flag_count
         )))
         .width(350.),
-        view::button("New Game", move |game: &mut Game| *game = Game::new()),
+        view::button(face, move |game: &mut Game| *game = Game::new()),
         view::sized_box::<Game, (), _>(view::label("")).width(350.),
     ))
     .main_axis_alignment(widget::MainAxisAlignment::Center)
@@ -219,7 +231,7 @@ fn app_logic(game: &mut Game) -> impl xilem::WidgetView<Game> {
                     status: CellStatus::Flagged,
                     ..
                 } => Box::new(view::button_any_pointer(
-                    "F",
+                    "!",
                     move |game: &mut Game, button| match button {
                         masonry::PointerButton::Secondary => game.flag(x, y),
                         _ => (),
@@ -228,31 +240,28 @@ fn app_logic(game: &mut Game) -> impl xilem::WidgetView<Game> {
                 Cell {
                     status: CellStatus::Covered,
                     ..
-                } => {
-                    if game.playing {
-                        Box::new(view::button_any_pointer(
-                            "",
-                            move |game: &mut Game, button| match button {
-                                masonry::PointerButton::Primary => game.reveal_multiple(x, y),
-                                masonry::PointerButton::Secondary => game.flag(x, y),
-                                _ => (),
-                            },
-                        ))
-                    } else {
-                        Box::new(view::button(
-                            if game.board[x][y].value == CellValue::Mined {
-                                "B"
-                            } else {
-                                ""
-                            },
-                            |_| {},
-                        ))
-                    }
-                }
+                } => match game.status {
+                    GameStatus::Playing => Box::new(view::button_any_pointer(
+                        "",
+                        move |game: &mut Game, button| match button {
+                            masonry::PointerButton::Primary => game.reveal_multiple(x, y),
+                            masonry::PointerButton::Secondary => game.flag(x, y),
+                            _ => (),
+                        },
+                    )),
+                    GameStatus::Won | GameStatus::Lost => Box::new(view::button(
+                        if game.board[x][y].value == CellValue::Mined {
+                            "X"
+                        } else {
+                            ""
+                        },
+                        |_| {},
+                    )),
+                },
                 Cell {
                     status: CellStatus::Revealed,
                     value: CellValue::Mined,
-                } => Box::new(view::label(" B")),
+                } => Box::new(view::label(" X")),
                 Cell {
                     status: CellStatus::Revealed,
                     value: CellValue::Number(0),
@@ -262,7 +271,7 @@ fn app_logic(game: &mut Game) -> impl xilem::WidgetView<Game> {
                     value: CellValue::Number(number),
                 } => Box::new(view::label(format!(" {}", number))),
             };
-            columns.push(view::sized_box(cell).width(20.).height(20.));
+            columns.push(view::sized_box(cell).width(22.).height(22.));
         }
         rows.push(view::flex(columns).direction(xilem::Axis::Horizontal));
     }
