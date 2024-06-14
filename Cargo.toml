@@ -1,0 +1,16 @@
+[package]
+name = "minesweeper_xilem"
+version = "0.1.0"
+edition = "2021"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[dependencies]
+rand = "0.8.5"
+xilem   = { git = "https://github.com/linebender/xilem.git" }
+masonry = { git = "https://github.com/linebender/xilem.git" }
+winit = "*"
