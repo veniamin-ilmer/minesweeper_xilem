@@ -1,5 +1,6 @@
 use xilem;
 use xilem::view;
+use masonry;
 use masonry::{dpi, widget};
 use winit::window;
 
@@ -17,6 +18,7 @@ enum CellValue {
 enum CellStatus {
 	Covered,
 	Revealed,
+	Flagged,
 }
 
 #[derive(Clone, Copy)]
@@ -29,6 +31,7 @@ struct Game {
 	board: [[Cell; CELL_ROWS]; CELL_COLUMNS],
 	playing: bool,
 	revealed_count: usize,
+	flag_count: usize,
 }
 
 fn with_surrounding_cells<F>(x: usize, y: usize, mut f: F) where F: FnMut(usize, usize) {
@@ -54,6 +57,7 @@ impl Game {
 			board: [[Cell {status: CellStatus::Covered, value: CellValue::Number(0)}; CELL_ROWS]; CELL_COLUMNS],
 			playing: true,
 			revealed_count: 0,
+			flag_count: 0,
 		};
 		game.add_mines();
 		game.add_numbers();
@@ -136,13 +140,35 @@ impl Game {
 			}
 		}
 	}
+	
+	fn flag(&mut self, x: usize, y: usize) {
+		if !self.playing {
+			return;
+		}
+		
+		match self.board[x][y].status {
+			CellStatus::Covered => {
+				if MINE_COUNT == self.flag_count {
+					//Too many flags! Don't add an extra flag. (Else MNE_COUNT - self.flag_count < 0, which will cause an exception because they are unsigned.)
+					return;
+				}
+				self.board[x][y].status = CellStatus::Flagged;
+				self.flag_count += 1;
+			},
+			CellStatus::Flagged => {
+				self.board[x][y].status = CellStatus::Covered;
+				self.flag_count -= 1;
+			},
+			CellStatus::Revealed => (), //If it's already revealed, it can't be flagged.
+		};
+	}
 }
 
 fn main() {
 	let app = xilem::Xilem::new(Game::new(), app_logic);
 	let window_attributes = window::Window::default_attributes()
 		.with_title("Minesweeper")
-		.with_inner_size(dpi::LogicalSize::new(34 * CELL_COLUMNS as u32, 45 + 34 * CELL_ROWS as u32));
+		.with_inner_size(dpi::LogicalSize::new(30 * CELL_COLUMNS as u32, 45 + 30 * CELL_ROWS as u32));
 	app.run_windowed_in(xilem::EventLoop::with_user_event(), window_attributes).unwrap();
 }
 
@@ -155,18 +181,26 @@ fn app_logic(game: &mut Game) -> impl xilem::WidgetView<Game> {
 		let mut columns = vec![];
 		for x in 0..CELL_COLUMNS {
 			let cell: Box<xilem::AnyWidgetView<_>> = match game.board[x][y] {
+				Cell {status: CellStatus::Flagged, .. } => Box::new(view::button_any_pointer("F", move |game: &mut Game, button| match button {
+					masonry::PointerButton::Secondary => game.flag(x, y),
+					_ => (),
+				})),
 				Cell {status: CellStatus::Covered, .. } => if game.playing {
-					Box::new(view::button("  ", move |game: &mut Game| game.reveal_multiple(x, y)))
+					Box::new(view::button_any_pointer("", move |game: &mut Game, button| match button {
+						masonry::PointerButton::Primary => game.reveal_multiple(x, y),
+						masonry::PointerButton::Secondary => game.flag(x, y),
+						_ => (),
+					}))
 				} else {
-					Box::new(view::label(
-						if game.board[x][y].value == CellValue::Mined { "  B  " } else { "      " }
-					))
+					Box::new(view::button(
+						if game.board[x][y].value == CellValue::Mined { "B" } else { "" }
+					, |_| {}))
 				}
-				Cell {status: CellStatus::Revealed, value: CellValue::Mined} => Box::new(view::label("  B  ")),
-				Cell {status: CellStatus::Revealed, value: CellValue::Number(0)} => Box::new(view::label("      ")),
-				Cell {status: CellStatus::Revealed, value: CellValue::Number(number)} => Box::new(view::label(format!("  {}  ", number))),
+				Cell {status: CellStatus::Revealed, value: CellValue::Mined} => Box::new(view::label(" B")),
+				Cell {status: CellStatus::Revealed, value: CellValue::Number(0)} => Box::new(view::label("")),
+				Cell {status: CellStatus::Revealed, value: CellValue::Number(number)} => Box::new(view::label(format!(" {}", number))),
 			};
-			columns.push(cell);
+			columns.push(view::sized_box(cell).width(20.).height(20.));
 		}
 		rows.push(view::flex(columns).direction(xilem::Axis::Horizontal));
 	}
