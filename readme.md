@@ -18,5 +18,5 @@ Missing Features:
 
 * No flagging
 * No special click detection
-* No color or 
+* No color or images/emojis
 * No clock
