@@ -76,6 +76,20 @@ where
     }
 }
 
+fn text_color(number: u8) -> xilem::Color {
+    match number {
+        1 => xilem::Color::rgb(1.0, 1.0, 0.0),
+        2 => xilem::Color::rgb(1.0, 0.5, 1.0),
+        3 => xilem::Color::rgb(0.0, 1.0, 1.0),
+        4 => xilem::Color::rgb(0.5, 0.5, 1.0),
+        5 => xilem::Color::rgb(1.0, 0.5, 0.5),
+        6 => xilem::Color::rgb(0.5, 1.0, 1.0),
+        7 => xilem::Color::WHITE,
+        8 => xilem::Color::GRAY,
+        _ => xilem::Color::BLACK,
+    }
+}
+
 impl Game {
     fn new() -> Game {
         let mut game = Game {
@@ -255,7 +269,7 @@ fn app_logic(game: &mut Game) -> impl xilem::WidgetView<Game> {
                     (CellStatus::Revealed, CellValue::Mined, _) => Box::new(view::label(" X")),
                     (CellStatus::Revealed, CellValue::Number(0), _) => Box::new(view::label("")),
                     (CellStatus::Revealed, CellValue::Number(number), _) => {
-                        Box::new(view::label(format!(" {}", number)))
+                        Box::new(view::label(format!(" {}", number)).color(text_color(number)))
                     }
                 };
             columns.push(view::sized_box(cell).width(22.).height(22.));

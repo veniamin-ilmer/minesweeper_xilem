@@ -14,9 +14,10 @@ Features:
 * Clicking a blank space recusively opens up the sides and corners.
 * Detects if you won or lost the game, lets you restart the game.
 * Right clicking adds flags
+* Colored numbers
 
 Missing Features:
 
 * Double clicking on numbers doesn't reveal surrounding cells.
-* No color or images/emojis
+* No images/emojis
 * No clock
