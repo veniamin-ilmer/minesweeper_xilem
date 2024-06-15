@@ -6,7 +6,7 @@ use xilem::view;
 
 const CELL_ROWS: usize = 16;
 const CELL_COLUMNS: usize = 30;
-const MINE_COUNT: usize = 10;
+const MINE_COUNT: usize = 99;
 
 #[derive(Clone, Copy, PartialEq)]
 enum CellValue {
@@ -170,10 +170,6 @@ impl Game {
     }
 
     fn flag(&mut self, x: usize, y: usize) {
-        if self.status != GameStatus::Playing {
-            return;
-        }
-
         match self.board[x][y].status {
             CellStatus::Covered => {
                 if MINE_COUNT == self.flag_count {
@@ -228,14 +224,16 @@ fn app_logic(game: &mut Game) -> impl xilem::WidgetView<Game> {
         for x in 0..CELL_COLUMNS {
             let cell: Box<xilem::AnyWidgetView<_>> =
                 match (game.board[x][y].status, game.board[x][y].value, game.status) {
-                    (CellStatus::Flagged, _, _) => Box::new(view::button_any_pointer(
-                        "!",
-                        move |game: &mut Game, button| {
+                    (CellStatus::Flagged, _, GameStatus::Playing) => Box::new(
+                        view::button_any_pointer("!", move |game: &mut Game, button| {
                             if button == masonry::PointerButton::Secondary {
                                 game.flag(x, y)
                             }
-                        },
-                    )),
+                        }),
+                    ),
+                    (CellStatus::Flagged, _, GameStatus::Won | GameStatus::Lost) => {
+                        Box::new(view::button("!", |_| {}))
+                    }
                     (CellStatus::Covered, _, GameStatus::Playing) => Box::new(
                         view::button_any_pointer("", move |game: &mut Game, button| match button {
                             masonry::PointerButton::Primary => game.reveal_multiple(x, y),
@@ -249,9 +247,11 @@ fn app_logic(game: &mut Game) -> impl xilem::WidgetView<Game> {
                     (CellStatus::Covered, CellValue::Mined, GameStatus::Lost) => {
                         Box::new(view::button("X", |_| {}))
                     }
-                    (CellStatus::Covered, _, GameStatus::Won | GameStatus::Lost) => {
-                        Box::new(view::button("", |_| {}))
-                    }
+                    (
+                        CellStatus::Covered,
+                        CellValue::Number(_),
+                        GameStatus::Won | GameStatus::Lost,
+                    ) => Box::new(view::button("", |_| {})),
                     (CellStatus::Revealed, CellValue::Mined, _) => Box::new(view::label(" X")),
                     (CellStatus::Revealed, CellValue::Number(0), _) => Box::new(view::label("")),
                     (CellStatus::Revealed, CellValue::Number(number), _) => {
